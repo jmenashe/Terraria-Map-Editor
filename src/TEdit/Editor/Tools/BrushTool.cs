@@ -15,10 +15,10 @@ namespace TEdit.Editor.Tools
     {
         private bool _isLeftDown;
         private bool _isRightDown;
-        private Vector2Int32 _startPoint;
-        private Vector2Int32 _endPoint;
-        private Vector2Int32 _leftPoint;
-        private Vector2Int32 _rightPoint;
+        private Vector2Int32 _startPoint = new Vector2Int32(0,0);
+        private Vector2Int32 _endPoint = new Vector2Int32(0, 0);
+        private Vector2Int32 _leftPoint = new Vector2Int32(0, 0);
+        private Vector2Int32 _rightPoint = new Vector2Int32(0, 0);
 
         public BrushTool(WorldViewModel worldViewModel)
             : base(worldViewModel)

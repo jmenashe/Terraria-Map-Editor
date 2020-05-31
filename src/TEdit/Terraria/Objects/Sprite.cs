@@ -11,8 +11,8 @@ namespace TEdit.Terraria.Objects
     {
         private WriteableBitmap _preview;
         private ushort _tile;
-        private Vector2Short _size;
-        private Vector2Short _origin;
+        private Vector2Short _size = new Vector2Short(0,0);
+        private Vector2Short _origin = new Vector2Short(0, 0);
         private FrameAnchor _anchor;
         private string _name;
         private bool _isPreviewTexture;

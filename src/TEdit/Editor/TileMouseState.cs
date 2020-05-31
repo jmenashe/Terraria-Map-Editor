@@ -10,7 +10,7 @@ namespace TEdit.Editor
         public MouseButtonState RightButton { get; set; }
         public MouseButtonState MiddleButton { get; set; }
 
-        public Vector2Int32 Location { get; set; }
+        public Vector2Int32 Location { get; set; } = new Vector2Int32(0, 0);
         public int WheelDelta { get; set; }
 
         public static TileMouseState FromHwndMouseEventArgs(HwndMouseEventArgs e, Vector2Int32 tile)

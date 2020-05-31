@@ -35,7 +35,7 @@ namespace TEdit.Editor.Clipboard
             set { Set("Name", ref _name, value); }
         }
 
-        private Vector2Int32 _size;
+        private Vector2Int32 _size = new Vector2Int32(0,0);
 
 
         public Vector2Int32 Size
