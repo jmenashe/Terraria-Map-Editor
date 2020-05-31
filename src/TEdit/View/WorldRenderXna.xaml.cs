@@ -17,13 +17,15 @@ using TEdit.ViewModel;
 using System.Windows.Media.Imaging;
 using Point = System.Windows.Point;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
+using System.Diagnostics;
+using TEdit.Utility;
 
 namespace TEdit.View
 {
     /// <summary>
     /// Interaction logic for WorldRenderXna.xaml
     /// </summary>
-    public partial class WorldRenderXna : UserControl
+    public partial class WorldRenderXna : System.Windows.Controls.UserControl
     {
         private const float LayerTilePixels = 1 - 0;
 
@@ -43,6 +45,9 @@ namespace TEdit.View
         private const float LayerLocations = 1 - 0.20f;
         private const float LayerSelection = 1 - 0.25f;
         private const float LayerTools = 1 - 0.30f;
+
+        private const float DefaultZoomIncrease = 1.025f;
+        private const float DefaultZoomDecrease = 0.975f;
 
         private Color _backgroundColor = Color.FromNonPremultiplied(32, 32, 32, 255);
         private readonly GameTimer _gameTimer;
@@ -81,38 +86,18 @@ namespace TEdit.View
 
         void _wvm_RequestScroll(object sender, TEdit.Framework.Events.EventArgs<ScrollDirection> e)
         {
-            float x = _scrollPosition.X;
-            float y = _scrollPosition.Y;
-            float inc = 1 / _zoom * 10;
-            switch (e.Value1)
-            {
-                case ScrollDirection.Up:
-                    y += inc;
-                    break;
-                case ScrollDirection.Down:
-                    y -= inc;
-                    break;
-                case ScrollDirection.Left:
-                    x += inc;
-                    break;
-                case ScrollDirection.Right:
-                    x -= inc;
-                    break;
-            }
-
-            _scrollPosition = new Vector2(x, y);
-            ClampScroll();
+            Scroll(1, e.Value1);
         }
 
         void _wvm_RequestZoom(object sender, TEdit.Framework.Events.EventArgs<bool> e)
         {
             if (e.Value1)
             {
-                Zoom(1);
+                Zoom(DefaultZoomIncrease);
             }
             else
             {
-                Zoom(-1);
+                Zoom(DefaultZoomDecrease);
             }
         }
 
@@ -161,7 +146,8 @@ namespace TEdit.View
             _dpiScale = new Vector2((float)m.M11, (float)m.M22);
         }
 
-        public void CenterOnTile(int x, int y)
+        public void CenterOnTile(int x, int y) => CenterOnTile((float)x, ((float)y));
+        public void CenterOnTile(float x, float y)
         {
             _scrollPosition = new Vector2(
                 -x + (float)(xnaViewport.ActualWidth / _zoom / 2),
@@ -2381,12 +2367,22 @@ namespace TEdit.View
 
         #region Mouse
 
+        
+        private Vector2Int32 GetTileMousePosition(float mouseX, float mouseY)
+        {
+            if (_wvm.CurrentWorld == null)
+                return new Vector2Int32();
+            var transformX = (float)(mouseX / _dpiScale.X / _zoom - _scrollPosition.X);
+            var transformY = (float)(mouseY / _dpiScale.Y / _zoom - _scrollPosition.Y);
+            var clampedX = (int)MathHelper.Clamp(transformX, 0, _wvm.CurrentWorld.TilesWide - 1);
+            var clampedY = (int)MathHelper.Clamp(transformY, 0, _wvm.CurrentWorld.TilesHigh - 1);
+            var v = new Vector2Int32(clampedX, clampedY);
+            return v;
+        }
         private TileMouseState GetTileMouseState(HwndMouseEventArgs e)
         {
-            return TileMouseState.FromHwndMouseEventArgs(e,
-                                                         new Vector2Int32(
-                                                             (int)MathHelper.Clamp((float)(e.Position.X / _dpiScale.X / _zoom - _scrollPosition.X), 0, _wvm.CurrentWorld.TilesWide - 1),
-                                                             (int)MathHelper.Clamp((float)(e.Position.Y / _dpiScale.Y / _zoom - _scrollPosition.Y), 0, _wvm.CurrentWorld.TilesHigh - 1)));
+            var position = GetTileMousePosition((float)e.Position.X, (float)e.Position.Y);
+            return TileMouseState.FromHwndMouseEventArgs(e, position);
         }
 
         private void xnaViewport_HwndMouseMove(object sender, HwndMouseEventArgs e)
@@ -2420,30 +2416,90 @@ namespace TEdit.View
                 _wvm.MouseUpTile(GetTileMouseState(e));
         }
 
+        static float _modX = 1.0f, _modY = 1.0f, _modZ = 1.0f;
         private void xnaViewport_HwndMouseWheel(object sender, HwndMouseEventArgs e)
         {
-            Zoom(e.WheelDelta);
+            float sign = Math.Sign(e.WheelDelta);
+            float modScale = (1.0f + 0.05f * sign);
+            bool hasAlt = Keyboard.Modifiers.HasFlag(ModifierKeys.Alt);
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                if (hasAlt)
+                    _modZ = Math.Max(0, _modZ * modScale);
+                else
+                {
+                    float modScaling = 1.0f + _modZ / 100;
+                    float coefficient = sign > 0 ? DefaultZoomIncrease * modScaling : DefaultZoomDecrease / modScaling;
+                    Zoom(coefficient);
+                }
+            }
+            else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                if (hasAlt)
+                    _modX *= modScale;
+                else
+                    Scroll(_modX, e.WheelDelta > 0 ? ScrollDirection.Left : ScrollDirection.Right);
+            }
+            else
+            {
+                if (hasAlt)
+                    _modY *= modScale;
+                else
+                    Scroll(_modY, e.WheelDelta > 0 ? ScrollDirection.Up : ScrollDirection.Down);
+            }
+            //Debug.WriteLine($"View: X: {_scrollPosition.X:n}, Y:{_scrollPosition.Y:n}, Z: {_zoom:2.2f} | Mods: X: {_modX:2.2f}, Y: {_modY:2.2f}, Z: {_modZ}");
         }
 
-        public void Zoom(int direction)
+        public void Scroll(float amount, ScrollDirection direction)
         {
-            float tempZoom = _zoom;
-            if (direction > 0)
-                tempZoom = _zoom * 2F;
-            if (direction < 0)
-                tempZoom = _zoom / 2F;
-            Vector2Int32 curTile = _wvm.MouseOverTile.MouseState.Location;
-            _zoom = MathHelper.Clamp(tempZoom, 0.125F, 64F);
-            CenterOnTile(curTile.X, curTile.Y);
-
-            if (_wvm.CurrentWorld != null)
+            float x = _scrollPosition.X;
+            float y = _scrollPosition.Y;
+            float inc = amount / _zoom * 10;
+            switch (direction)
             {
-                var r = GetViewingArea();
-                ScrollBarH.ViewportSize = r.Width;
-                ScrollBarV.ViewportSize = r.Height;
-                ScrollBarH.Maximum = _wvm.CurrentWorld.TilesWide - ScrollBarH.ViewportSize;
-                ScrollBarV.Maximum = _wvm.CurrentWorld.TilesHigh - ScrollBarV.ViewportSize;
+                case ScrollDirection.Up:
+                    y += inc;
+                    break;
+                case ScrollDirection.Down:
+                    y -= inc;
+                    break;
+                case ScrollDirection.Left:
+                    x += inc;
+                    break;
+                case ScrollDirection.Right:
+                    x -= inc;
+                    break;
             }
+            _scrollPosition = new Vector2(x, y);
+            ClampScroll();
+        }
+
+        public void Zoom(float coefficient)
+        {
+            if (_wvm.CurrentWorld == null)
+                return;
+
+            // Compute scaled offset: view center to mouse
+            var viewArea = GetViewingArea(); // Tile Space                     V Pixel Space V
+            var mousePosition = new Vector2(_wvm.MouseOverTile.MouseState.Location.X, _wvm.MouseOverTile.MouseState.Location.Y);
+            var mouseOffset = new Vector2(mousePosition.X - viewArea.Center.X, mousePosition.Y - viewArea.Center.Y); // Tile Space
+            var mouseOffsetScale = new Vector2(mouseOffset.X / (viewArea.Width / 2), mouseOffset.Y / (viewArea.Height / 2)); // Unitless
+
+            // Apply zoom to viewing area
+            _zoom *= coefficient;
+            _zoom = MathHelper.Clamp(_zoom, 0.125F, 64F);
+
+            // Compute new view center
+            var postViewArea = GetViewingArea();
+            var postMouseOffset = new Vector2(mouseOffsetScale.X * postViewArea.Width / 2, mouseOffsetScale.Y * postViewArea.Height / 2);
+            var desiredCenterPosition = mousePosition - postMouseOffset;
+
+            // Apply new view center
+            CenterOnTile(desiredCenterPosition.X, desiredCenterPosition.Y);
+            ScrollBarH.ViewportSize = postViewArea.Width;
+            ScrollBarV.ViewportSize = postViewArea.Height;
+            ScrollBarH.Maximum = _wvm.CurrentWorld.TilesWide - ScrollBarH.ViewportSize;
+            ScrollBarV.Maximum = _wvm.CurrentWorld.TilesHigh - ScrollBarV.ViewportSize;
         }
 
         public void ZoomFocus(int x, int y)
