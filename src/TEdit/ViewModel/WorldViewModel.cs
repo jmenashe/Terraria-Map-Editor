@@ -783,7 +783,7 @@ namespace TEdit.ViewModel
             ofd.Filter = "Terraria World File|*.wld|Terraria World Backup|*.bak|TEdit Backup File|*.TEdit";
             ofd.DefaultExt = "Terraria World File|*.wld";
             ofd.Title = "Load Terraria World File";
-            ofd.InitialDirectory = DependencyChecker.PathToWorlds;
+            ofd.RestoreDirectory = true;
             ofd.Multiselect = false;
             if ((bool)ofd.ShowDialog())
             {
