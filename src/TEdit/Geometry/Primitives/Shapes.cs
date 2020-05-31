@@ -12,6 +12,7 @@ WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.
 
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Windows;
 using TEdit.Utility;
 
 namespace TEdit.Geometry.Primitives
@@ -79,86 +80,17 @@ namespace TEdit.Geometry.Primitives
     }
 
     [Serializable]
-    public class RectangleInt32
+    public class RectangleInt32 : Rectangle<int>
     {
-        public int X1;
-        public int X2;
-        public int Y1;
-        public int Y2;
-
         public RectangleInt32(int x1, int y1, int x2, int y2)
-        {
-            X1 = x1;
-            Y1 = y1;
-            X2 = x2;
-            Y2 = y2;
-        }
-
-        public int Left { get { return (X2 > X1) ? X1 : X2; } }
-        public int Right { get { return (X2 > X1) ? X2 : X1; } }
-        public int Top { get { return (Y2 > Y1) ? Y1 : Y2; } }
-        public int Bottom { get { return (Y2 > Y1) ? Y2 : Y1; } }
-        public int Height { get { return Right - Left; } }
-        public int Width { get { return Bottom - Top; } }
-
-        public bool Contains(int x, int y)
-        {
-            int xabs = x - Left;
-            int yabs = y - Top;
-            if (xabs < 0)
-                return false;
-
-            if (yabs < 0)
-                return false;
-
-            return (xabs > Width) && (yabs > Height);
-        }
-
-        public static RectangleInt32 FromLrtb(int left, int right, int top, int bottom)
-        {
-            return new RectangleInt32(left, top, right, bottom);
-        }
+            : base(x1, x2, y1, y2)
+        { }
     }
-
     [Serializable]
-    public class RectangleFloat
+    public class RectangleFloat : Rectangle<float>
     {
-        public float X1;
-        public float X2;
-        public float Y1;
-        public float Y2;
-
         public RectangleFloat(float x1, float y1, float x2, float y2)
-        {
-            X1 = x1;
-            Y1 = y1;
-            X2 = x2;
-            Y2 = y2;
-        }
-
-        public float Left { get { return (X2 > X1) ? X1 : X2; } }
-        public float Right { get { return (X2 > X1) ? X2 : X1; } }
-        public float Top { get { return (Y2 > Y1) ? Y1 : Y2; } }
-        public float Bottom { get { return (Y2 > Y1) ? Y2 : Y1; } }
-        public float Height { get { return Right - Left; } }
-        public float Width { get { return Bottom - Top; } }
-
-        public bool Contains(float x, float y)
-        {
-            float xabs = x - Left;
-            float yabs = y - Top;
-            if (xabs < 0)
-                return false;
-
-            if (yabs < 0)
-                return false;
-
-            return (xabs > Width) && (yabs > Height);
-        }
-
-        public static RectangleFloat FromLrtb(float left, float right, float top, float bottom)
-        {
-            return new RectangleFloat(left, top, right, bottom);
-        }
+            : base(x1, x2, y1, y2)
+        { }
     }
 }
